@@ -1,82 +1,173 @@
-NUMPLAY - Memory Game
+//numplay-memory-game
+#include <iostream>
+#include <cstdlib>
+#include <ctime>
+#include <string>
+#include <vector>
 
-A fun console-based memory game written in C++. NUMPLAY challenges players to memorize and recall randomly generated sequences of characters. The game supports both single-player and multiplayer (group) modes, with increasing difficulty as levels progress.
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <unistd.h>
+#endif
 
-🎮 Features
-🔢 Random sequences with digits, letters, and special characters (based on level).
-👤 Single-player and 👥 Group mode support.
-📈 Dynamic difficulty scaling as levels increase.
-❤ Players get 3 chances before elimination.
-🏆 Displays individual and group scores with accuracy percentage.
-🎯 Motivational feedback (e.g., "Keep practicing!", "Outstanding memory!").
+using namespace std;
 
-🚀 How to Run
+void clearScreen() {
+#ifdef _WIN32
+    system("cls");
+#else
+    system("clear");
+#endif
+}
 
-🖥 Option 1: Run in Terminal (g++ Compiler)
+void wait(int seconds) {
+#ifdef _WIN32
+    Sleep(seconds * 1000);
+#else
+    sleep(seconds);
+#endif
+}
 
-Make sure you have g++ installed.
-Compile the program:
-g++ numplay.cpp -o numplay
-Run the program:
-./numplay
+string generateRandomString(int length, int difficulty) {
+    string digits = "0123456789";
+    string letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+    string special = "!@#$%^&*()-_=+<>?";
 
-📝 Option 2: Run in Visual Studio Code (VS Code)
+    string pool = digits;
+    if (difficulty >= 2) pool += letters;
+    if (difficulty >= 3) pool += special;
 
-1. Open the project folder in VS Code.
-2. Install the C/C++ extension by Microsoft (if not already installed).
-3. Open the file numplay.cpp.
-4. Click on the Run ▶ button at the top-right corner of the editor, or press Ctrl + F5 to run without debugging.
-5. The game will run inside the VS Code integrated terminal.
+    string result = "";
+    for (int i = 0; i < length; i++) {
+        result += pool[rand() % pool.size()];
+    }
+    return result;
+}
 
+struct Player {
+    string name;
+    int score = 0;
+    int attempts = 0;
+    int correct = 0;
+    int remainingChances = 3;
+};
 
+int main() {
+    srand(time(0));
 
-📖 Game Rules
+    cout << "===================================" << endl;
+    cout << "   Welcome to NUMPLAY - A Memory Game" << endl;
+    cout << "===================================" << endl;
 
-1. Choose Single (S) or Group (G) mode.
-2. Enter player names.
-3. At each level:
-A random sequence is shown for a few seconds.
-Players must type the exact sequence from memory.
-4. Correct answers = +10 points.
-5. Wrong answers = lose one chance (3 total).
-6. Game ends when all players run out of chances.
+    char mode;
+    cout << "Play in Single (S) or Group (G) mode? ";
+    cin >> mode;
+    cin.ignore();
 
-🧠 Difficulty Levels
+    vector<Player> players;
+    if (mode == 'S' || mode == 's') {
+        string name;
+        cout << "Enter your name: ";
+        getline(cin, name);
+        players.push_back({name});
+    } else if (mode == 'G' || mode == 'g') {
+        int numPlayers;
+        cout << "Enter number of players: ";
+        cin >> numPlayers;
+        cin.ignore();
+        for (int i = 0; i < numPlayers; i++) {
+            string pname;
+            cout << "Enter name of player " << (i + 1) << ": ";
+            getline(cin, pname);
+            players.push_back({pname});
+        }
+    } else {
+        cout << "Invalid choice. Exiting..." << endl;
+        return 0;
+    }
 
-Level 1–5: Digits only.
-Level 6–10: Digits + Letters.
-Level 11+: Digits + Letters + Special Characters.
+    int level = 1, difficulty = 1;
+    bool playAgain = true;
 
-🏅 Example Output
+    while (playAgain) {
+        for (auto &p : players) {
+            p.score = 0;
+            p.attempts = 0;
+            p.correct = 0;
+            p.remainingChances = 3;
+        }
 
-===================================
-   Welcome to NUMPLAY - A Memory Game
-===================================
-Play in Single (S) or Group (G) mode? S
-Enter your name: Alex
-Player: Alex
-Memorize this sequence: 4aB7
-(Wait for 3 seconds...)
-Alex, enter the sequence: 4aB7
-Correct!
+        bool gameActive = true;
+        while (gameActive) {
+            gameActive = false; // will become true if at least one player has chances left
 
-===== Final Results =====
-Alex → Score: 50 | Accuracy: 85%
-Impressive memory, Alex!
-Thanks for playing NUMPLAY!
+            for (auto &p : players) {
+                if (p.remainingChances <= 0) continue; // skip if player is out
 
-📌 Future Improvements
-Add difficulty selection before starting.
-Support for custom sequence display time.
-Add a leaderboard system.
-Cross-platform GUI version.
+                gameActive = true;
 
-📜 License
-This project is open-source under the MIT License.
+                int length = (level / 3) + 3;
+                if (level > 5) difficulty = 2;
+                if (level > 10) difficulty = 3;
 
+                string sequence = generateRandomString(length, difficulty);
 
----
+                clearScreen();
+                cout << "Player: " << p.name << endl;
+                cout << "Memorize this sequence: " << sequence << endl;
+                wait(3);
 
-✅ This version is now beginner-friendly, works for both Terminal users and VS Code users, and looks polished for GitHub.
+                clearScreen();
+                string userInput;
+                cout << p.name << ", enter the sequence: ";
+                cin >> userInput;
 
-Do you also want me to add a cool badge section at the top (like “Built with C++ | g++ Compiler | Works in VS Code”) to make your README look even more professional?
+                p.attempts++;
+
+                if (userInput == sequence) {
+                    cout << "Correct!" << endl;
+                    p.score += 10;
+                    p.correct++;
+                } else {
+                    p.remainingChances--;
+                    if (p.remainingChances > 0) {
+                        cout << "Wrong! You have " << p.remainingChances
+                             << " chance(s) left.\nTry again next turn." << endl;
+                    } else {
+                        cout << "Wrong! You have no chances left.\n" << endl;
+                    }
+                }
+                wait(2);
+            }
+            level++;
+        }
+
+        // Show final individual and group results
+        clearScreen();
+        cout << "\n===== Final Results =====\n";
+        int groupScore = 0;
+        for (auto &p : players) {
+            double acc = (p.attempts > 0) ? (p.correct * 100.0 / p.attempts) : 0;
+            cout << p.name << " → Score: " << p.score << " | Accuracy: " << acc << "%\n";
+            if (p.score < 50)
+                cout << "Keep practicing, " << p.name << "!\n";
+            else if (p.score < 120)
+                cout << "Impressive memory, " << p.name << "!\n";
+            else
+                cout << "Outstanding memory, " << p.name << "!\n";
+
+            groupScore += p.score;
+        }
+        cout << "\nGroup Score: " << groupScore << endl;
+
+        char choice;
+        cout << "\nDo you want to play again? (Y/N): ";
+        cin >> choice;
+        if (choice == 'N' || choice == 'n')
+            playAgain = false;
+    }
+
+    cout << "\nThanks for playing NUMPLAY!" << endl;
+    return 0;
+}
